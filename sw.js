@@ -1,7 +1,7 @@
 "use strict";
 
 // Bump this version whenever you change any cached file.
-const CACHE_NAME = "medics-v10";
+const CACHE_NAME = "medics-v11";
 const APP_SHELL = [
   "./",
   "index.html",
