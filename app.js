@@ -34,6 +34,7 @@ function createRun() {
     events: [],            // score changes: { step, label, delta }
     anamnesis: null,       // history-taking session (items, questions, communication)
     exam: null,            // physical exam session (maneuvers performed)
+    workup: null,          // paraclinical session (exams requested, blocked, useless)
     missedDiagnoses: []    // diagnoses revealed instead of found
   };
 }
@@ -315,6 +316,15 @@ function examToolOf(item, config) {
 /** Maneuvers revealed when the student applies a tool on a body zone. */
 function examItemsFor(items, zoneId, toolId, config) {
   return items.filter((item) => item.zone === zoneId && examToolOf(item, config) === toolId);
+}
+
+/** Which work-up exams of the case a free text (or a catalogue name) refers to. */
+function matchWorkup(step, text) {
+  const priority = Object.keys(step.examensValides).filter((key) =>
+    hasKeyword(text, step.examensValides[key].motsCles));
+  const acceptable = (step.examensAcceptables || []).filter((exam) =>
+    hasKeyword(text, exam.motsCles)).map((exam) => exam.nom);
+  return { priority, acceptable };
 }
 
 /** True when at least one key maneuver was performed. */
@@ -1115,9 +1125,12 @@ function renderPhysicalExam(step) {
 
 function renderParaclinical(step) {
   const ui = state.ui;
+  const config = ui.bilan;
+  const panel = el("div", "bilan-panel");
   const shell = createShell(step, {
     instruction: step.question,
-    placeholder: ui.placeholders.etape3_paraclinique
+    placeholder: ui.placeholders.etape3_paraclinique,
+    extra: panel
   });
 
   const priorityExams = Object.keys(step.examensValides).map((key) =>
@@ -1128,6 +1141,16 @@ function renderParaclinical(step) {
   const penalizedInputs = new Set();
   const penalizedPrerequisites = new Set();
   let completeAnnounced = false;
+
+  const record = {
+    priority: priorityExams.map((exam) => ({
+      key: exam.key, libelle: exam.libelle, resultat: exam.resultat, pourquoi: exam.pourquoi || "", found: false
+    })),
+    acceptable: [],
+    useless: [],
+    blocked: []
+  };
+  state.run.workup = record;
 
   /** An exam with a prerequisite needs at least one exam of the required group first. */
   function prerequisiteMet(exam) {
@@ -1150,11 +1173,11 @@ function renderParaclinical(step) {
     return Object.keys(groups).every((group) => groups[group]);
   }
 
-  shell.onSubmit = (text) => {
-    shell.addMessage("student", text);
+  /** Handles one request (typed text or one catalogue name). */
+  function processRequest(text) {
     let matchedAny = false;
 
-    // Exams with a prerequisite are handled last, so "scanner puis PL" in one message works.
+    // Exams with a prerequisite are handled last, so "scanner puis PL" in one request works.
     const ordered = priorityExams.filter((exam) => !exam.prerequis)
       .concat(priorityExams.filter((exam) => exam.prerequis));
 
@@ -1171,11 +1194,13 @@ function renderParaclinical(step) {
           penalizedPrerequisites.add(exam.key);
           changeScore(-exam.prerequis.malus, exam.prerequis.libelleJournal);
           message += " " + formatText(ui.messages.prerequisPenalite, { points: exam.prerequis.malus });
+          record.blocked.push({ libelle: exam.libelle, message: exam.prerequis.message, malus: exam.prerequis.malus });
         }
         shell.addMessage("danger", message);
         return;
       }
       foundKeys.add(exam.key);
+      record.priority.find((entry) => entry.key === exam.key).found = true;
       shell.addMessage("sim", exam.resultat, exam.libelle || ui.libellesMessages.resultat);
     });
 
@@ -1187,6 +1212,7 @@ function renderParaclinical(step) {
         return;
       }
       doneAcceptable.add(exam.nom);
+      record.acceptable.push({ nom: exam.nom, resultat: exam.resultat || "", malus: exam.malus || 0 });
       shell.addMessage("sim", exam.resultat || ui.messages.examenNonPrioritaire, exam.nom);
       if (exam.malus > 0) changeScore(-exam.malus, ui.journal.examenInutile + " : " + exam.nom);
     });
@@ -1195,19 +1221,96 @@ function renderParaclinical(step) {
       const normalized = normalize(text);
       if (normalized.length >= 2 && !penalizedInputs.has(normalized)) {
         penalizedInputs.add(normalized);
-        changeScore(-step.malusExamenInutile, ui.journal.examenInutile);
+        record.useless.push({ nom: text, malus: step.malusExamenInutile });
+        changeScore(-step.malusExamenInutile, ui.journal.examenInutile + " : " + text);
         shell.addMessage("danger", formatText(ui.messages.examenInutile, { points: step.malusExamenInutile }));
       } else {
         shell.addMessage("warn", ui.messages.examenNonReconnu);
       }
     }
+  }
 
+  function checkComplete() {
     if (isComplete() && !completeAnnounced) {
       completeAnnounced = true;
       shell.addMessage("good", ui.messages.bilanComplet);
       shell.showNext();
     }
+  }
+
+  shell.onSubmit = (text) => {
+    shell.addMessage("student", text);
+    processRequest(text);
+    checkComplete();
   };
+
+  // Request form: pick exams by category, then send the whole request.
+  const selected = [];          // names, in the order they were ticked
+  const sent = new Set();
+  let activeCategory = config.categories[0].id;
+
+  const hint = el("p", "bilan-hint", config.consigne);
+  const tabs = el("div", "bilan-tabs");
+  const list = el("div", "bilan-list");
+  const basket = el("div", "bilan-basket");
+  const basketText = el("span", "bilan-basket-text", config.aucuneSelection);
+  const sendButton = el("button", "btn btn-blue bilan-send");
+  sendButton.type = "button";
+  basket.append(basketText, sendButton);
+  panel.append(hint, tabs, list, basket);
+
+  function renderPanel() {
+    tabs.innerHTML = "";
+    list.innerHTML = "";
+    config.categories.forEach((category) => {
+      const count = category.examens.filter((exam) => selected.includes(exam.nom)).length;
+      const tab = el("button", "bilan-tab" + (category.id === activeCategory ? " active" : ""));
+      tab.type = "button";
+      tab.append(document.createTextNode(category.nom));
+      if (count > 0) tab.append(el("span", "bilan-tab-count", String(count)));
+      tab.addEventListener("click", () => { activeCategory = category.id; renderPanel(); });
+      tabs.append(tab);
+    });
+    const category = config.categories.find((entry) => entry.id === activeCategory);
+    category.examens.forEach((exam) => {
+      const isSent = sent.has(exam.nom);
+      const isOn = selected.includes(exam.nom);
+      const chip = el("button", "bilan-chip" + (isOn ? " on" : "") + (isSent ? " sent" : ""));
+      chip.type = "button";
+      chip.setAttribute("aria-pressed", isOn ? "true" : "false");
+      chip.append(el("span", "bilan-box", isSent || isOn ? "✓" : ""), el("span", "bilan-name", exam.nom));
+      if (isSent) {
+        chip.disabled = true;
+        chip.append(el("span", "bilan-sent", config.demande));
+      } else {
+        chip.addEventListener("click", () => {
+          const at = selected.indexOf(exam.nom);
+          if (at >= 0) selected.splice(at, 1); else selected.push(exam.nom);
+          renderPanel();
+        });
+      }
+      list.append(chip);
+    });
+    basketText.textContent = selected.length ? selected.join(", ") : config.aucuneSelection;
+    sendButton.textContent = formatText(config.boutonDemander, { n: selected.length });
+    sendButton.disabled = selected.length === 0;
+  }
+
+  sendButton.addEventListener("click", () => {
+    if (selected.length === 0) return;
+    const names = selected.slice();
+    shell.addMessage("student", config.prefixeDemande + names.join(", "));
+    // Exams that need a precaution first (e.g. lumbar puncture) are processed last.
+    const needsPrerequisite = (name) => matchWorkup(step, name).priority.some((key) => step.examensValides[key].prerequis);
+    names.filter((name) => !needsPrerequisite(name)).concat(names.filter(needsPrerequisite)).forEach((name) => {
+      sent.add(name);
+      processRequest(name);
+    });
+    selected.length = 0;
+    renderPanel();
+    checkComplete();
+  });
+  renderPanel();
 }
 
 /* ------------------------------------------------------------------ */
@@ -1534,6 +1637,54 @@ function renderExamDebrief(parent) {
   });
 }
 
+function renderWorkupDebrief(parent) {
+  const record = state.run.workup;
+  if (!record) return;
+  const labels = state.ui.bilan.debrief;
+  const found = record.priority.filter((entry) => entry.found).length;
+  const percent = record.priority.length ? Math.round((100 * found) / record.priority.length) : 100;
+  const fold = createFoldCard(labels.titre, formatText(labels.resumePrio, { a: found, b: record.priority.length }), percent, found < record.priority.length);
+  parent.append(fold.root);
+  const card = fold.body;
+  card.append(el("p", "qa-intro", labels.intro));
+
+  function section(title, rows, withMissing) {
+    if (rows.length === 0) return;
+    const details = el("details", "qa-rubric");
+    const summaryLine = el("summary", "qa-rubric-summary");
+    summaryLine.append(el("span", "qa-rubric-title", title), el("span", "qa-count" + (withMissing ? " has-missing" : ""), String(rows.length)));
+    details.append(summaryLine);
+    const list = el("ul", "qa-list");
+    rows.forEach((row) => list.append(row));
+    details.append(list);
+    card.append(details);
+  }
+  function row(ok, label, lines) {
+    const item = el("li", "qa-item " + (ok ? "ok" : "ko"));
+    const head = el("div", "qa-head");
+    head.append(el("span", "qa-mark", ok ? "✓" : "✗"), el("strong", "qa-label", label));
+    item.append(head);
+    lines.filter(Boolean).forEach((line) => item.append(el("div", line.cls, line.text)));
+    return item;
+  }
+
+  const priorityRows = record.priority.map((entry) => row(entry.found, entry.libelle, [
+    { cls: "qa-answer", text: labels.resultat + " : " + entry.resultat },
+    entry.pourquoi ? { cls: "qa-why", text: labels.pourquoi + " : " + entry.pourquoi } : null
+  ]));
+  section(labels.prioritaires, priorityRows, found < record.priority.length);
+  section(labels.acceptables, record.acceptable.map((entry) => row(true, entry.nom, [])), false);
+  section(labels.bloques, record.blocked.map((entry) => row(false, entry.libelle, [
+    { cls: "qa-why", text: entry.message + " (" + formatText(labels.malus, { points: entry.malus }) + ")" }
+  ])), true);
+  section(labels.inutiles, record.useless.map((entry) => row(false, entry.nom, [
+    { cls: "qa-why", text: formatText(labels.malus, { points: entry.malus }) }
+  ])), true);
+  if (record.priority.every((entry) => !entry.found) && record.acceptable.length + record.useless.length + record.blocked.length === 0) {
+    card.append(el("div", "msg msg-warn", labels.aucun));
+  }
+}
+
 function renderDebrief(step) {
   const ui = state.ui;
   saveBestScore();
@@ -1578,6 +1729,7 @@ function renderDebrief(step) {
   card.append(el("h2", "section-title", ui.libellesDebrief.vosEtapes));
   renderAnamnesisDebrief(card);
   renderExamDebrief(card);
+  renderWorkupDebrief(card);
 
   card.append(el("h2", "section-title", ui.libellesDebrief.pointsCles));
   const list = el("ul", "points");
