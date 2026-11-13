@@ -595,3 +595,38 @@ body {
 /* Brand row on the home menu */
 .brand { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
 .brand-name { font-weight: 900; letter-spacing: .1em; font-size: 15px; color: var(--title); }
+
+
+/* ---------- Work-up request form ---------- */
+.bilan-panel { display: flex; flex-direction: column; gap: 10px; margin: 0 0 12px; }
+.bilan-hint { margin: 0; color: var(--muted); font-weight: 700; font-size: 14px; line-height: 1.4; }
+.bilan-tabs { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.bilan-tabs::-webkit-scrollbar { display: none; }
+.bilan-tab {
+  flex: 0 0 auto; border: 2px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px;
+  padding: 8px 14px; min-height: 40px; font: inherit; font-weight: 800; font-size: 14px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.bilan-tab.active { background: var(--blue); border-color: #1e3a8a; color: #fff; }
+.bilan-tab-count { background: #047857; color: #fff; border-radius: 999px; font-size: 11px; min-width: 18px; padding: 1px 6px; text-align: center; }
+.bilan-list { display: grid; gap: 8px; }
+.bilan-chip {
+  display: flex; align-items: center; gap: 12px; text-align: left; width: 100%; min-height: 48px; padding: 10px 12px;
+  border: 2px solid var(--line); border-bottom-width: 4px; border-radius: 14px; background: var(--surface); color: var(--ink);
+  font: inherit; font-weight: 800; cursor: pointer;
+}
+.bilan-chip.on { border-color: var(--blue); background: var(--blue-light); }
+.bilan-chip.sent { border-style: dashed; color: var(--muted); cursor: default; }
+.bilan-box {
+  flex: none; width: 24px; height: 24px; border-radius: 8px; border: 2px solid var(--line); display: grid; place-items: center;
+  font-size: 15px; color: #fff; background: var(--surface);
+}
+.bilan-chip.on .bilan-box { background: var(--blue); border-color: var(--blue); }
+.bilan-chip.sent .bilan-box { background: #047857; border-color: #047857; }
+.bilan-name { flex: 1; }
+.bilan-sent { font-size: 12px; font-weight: 800; color: var(--muted); }
+.bilan-basket { display: flex; align-items: center; gap: 10px; background: var(--surface-2); border: 2px solid var(--line); border-radius: 14px; padding: 10px 12px; }
+.bilan-basket-text { flex: 1; min-width: 0; font-size: 13px; font-weight: 700; color: var(--muted); line-height: 1.35; }
+.bilan-send { flex: none; }
+.bilan-send:disabled { opacity: .55; cursor: not-allowed; }
+.bilan-chip:focus-visible, .bilan-tab:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
