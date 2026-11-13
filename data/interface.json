@@ -1202,5 +1202,135 @@
     ],
     "quitterConfirmation": "Quitter ce cas et revenir au menu ? Votre progression sera perdue."
   },
-  "slogan": "Du symptôme au diagnostic."
+  "slogan": "Du symptôme au diagnostic.",
+  "bilan": {
+    "consigne": "Cochez les examens que vous demandez (plusieurs possibles), puis envoyez la demande. Un examen absent de la liste peut s'écrire dans la zone de saisie.",
+    "prefixeDemande": "Demande d'examens : ",
+    "boutonDemander": "Demander les examens ({n})",
+    "aucuneSelection": "Aucun examen sélectionné",
+    "demande": "demandé",
+    "categories": [
+      {
+        "id": "biologie",
+        "nom": "Biologie",
+        "examens": [
+          {
+            "id": "nfs",
+            "nom": "Numération formule sanguine (NFS)"
+          },
+          {
+            "id": "iono",
+            "nom": "Ionogramme sanguin"
+          },
+          {
+            "id": "creat",
+            "nom": "Urée et créatinine"
+          },
+          {
+            "id": "crp",
+            "nom": "CRP et procalcitonine"
+          },
+          {
+            "id": "glyc",
+            "nom": "Glycémie (capillaire ou veineuse)"
+          },
+          {
+            "id": "hepat",
+            "nom": "Bilan hépatique"
+          },
+          {
+            "id": "gaz",
+            "nom": "Gaz du sang et lactates"
+          },
+          {
+            "id": "coag",
+            "nom": "Bilan de coagulation"
+          },
+          {
+            "id": "hemoc",
+            "nom": "Hémocultures"
+          },
+          {
+            "id": "vih",
+            "nom": "Sérologie VIH"
+          }
+        ]
+      },
+      {
+        "id": "parasito",
+        "nom": "Parasitologie",
+        "examens": [
+          {
+            "id": "ge",
+            "nom": "Goutte épaisse et frottis mince"
+          },
+          {
+            "id": "tdr",
+            "nom": "TDR (test rapide)"
+          }
+        ]
+      },
+      {
+        "id": "imagerie",
+        "nom": "Imagerie",
+        "examens": [
+          {
+            "id": "tdm",
+            "nom": "Scanner cérébral (TDM)"
+          },
+          {
+            "id": "irm",
+            "nom": "IRM cérébrale"
+          },
+          {
+            "id": "rxthorax",
+            "nom": "Radiographie du thorax"
+          },
+          {
+            "id": "echo",
+            "nom": "Échographie abdominale"
+          }
+        ]
+      },
+      {
+        "id": "specialises",
+        "nom": "Examens ciblés",
+        "examens": [
+          {
+            "id": "pl",
+            "nom": "Ponction lombaire (PL)"
+          },
+          {
+            "id": "fo",
+            "nom": "Fond d'œil"
+          },
+          {
+            "id": "eeg",
+            "nom": "EEG"
+          },
+          {
+            "id": "ecg",
+            "nom": "ECG"
+          },
+          {
+            "id": "ecbu",
+            "nom": "ECBU et bandelette urinaire"
+          }
+        ]
+      }
+    ],
+    "debrief": {
+      "titre": "Bilan paraclinique",
+      "intro": "Les examens prioritaires, ceux qui étaient raisonnables et ceux qui n'apportaient rien.",
+      "resumePrio": "{a} / {b} examens prioritaires demandés",
+      "prioritaires": "Examens prioritaires",
+      "acceptables": "Raisonnables, non prioritaires",
+      "inutiles": "Sans intérêt ici",
+      "bloques": "Demandés trop tôt",
+      "resultat": "Résultat",
+      "pourquoi": "Pourquoi c'est important",
+      "aucun": "Aucun examen demandé.",
+      "malus": "-{points} points"
+    }
+  }
 }
